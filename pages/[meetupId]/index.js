@@ -35,7 +35,7 @@ export async function getStaticPaths() {
 
   return {
     // to show all the supported parameter values are in the path array or not
-    fallback: false,
+    fallback: "blocking",
     paths: meetups.map((meetup) => ({
       params: { meetupId: meetup._id.toString() },
     })),
