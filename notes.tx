@@ -1,0 +1,396 @@
+poentata e imame components folder so all the react components there. Ovie treba da gi prikazhime vo the pages kade sho kje bidat the pages od next js. 
+PAGES FOLDER IS A RESERVED NAME mora da go ima. Components ne e reserved. 
+
+
+APP.JS AND LAYOUT:
+
+ 1. we have layout component that wraps content in it, za poubo formatirano, it uses props children to display the wrapped stuff.
+
+APP JS ACTS AS ROOT COMPONENT - it recieves props, uses obj destructuring to pull out info and it pulls out component and page props. It's passed automatically in the app component by next js.
+we can use this to wrap this component with layout so we don't do it on every page.
+                    function MyApp({ Component, pageProps }) {
+                    return (
+                        <Layout>
+                        <Component {...pageProps} />
+                        </Layout>
+                    );
+                    }
+
+
+
+PROGRAMATTIC NAVIGATION: 
+use dynamic page whenever we click on show details. 
+
+in meetupItem we could add the Link component ama sega drugo kje iskoristime za programatically.
+
+instead we do button with onclick handler and in the handler we use function from useRouter
+
+                import { useRouter } from "next/router";
+
+                    function MeetupItem(props) {
+                    const router = useRouter();
+
+                    function showDetalisHandler() {
+//push method in router pushes a new page onto the stack of methods, equivalent of using link component.
+                        router.push("/" + props.id);
+                    } }
+
+//if we don't want the user to be able to go back with back button
+                    router.replace(sth)
+
+
+
+
+
+
+
+
+~~~~~~~~PRE RENDER A PAGE WITH DATA:~~~~~~
+
+IF WE WANT TO FETCH BACKEND DATA ON LOAD:
+
+problem: 
+if we use useEffect and fetch:
+USE EFFECT EXECUTES THE FUNCTION AFTER THE COMPONENT FUNCTION WAS EXECUTED, first the home page is rendered, loaded meetups will be empty. then use effect executes, updates the state, and component function reexecutes and rerenders the list . We will have two component render cycles, and the first tume the component renders the loaded meetup state will be the initial empty state array. (of this has some backend waiting time, there might be a loading spinner needed). Not ideal for search engine optimization. (the html misses the data from the server, next js takes the result of the first render cycle so the data is missing).
+
+
+SOLUTION: next js has 2 form of pre rendering:
+
+1. Static Generation
+
+2. Server-Side Rendering 
+
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. STATIC GENERATION - typically this we use, a page component is pre-rendered when you build the applicaition, for production. (when we run npm run build) By default the page is not prerendered on the fly on the server, when a request reaches the server, but instead when we build the site for production. After deployed, the page does not change by default. Then if we update the data, we need to start that build that process again and redeploy it. (and it's okay poshto chesto the data ne se menva mnogu, a ako se menva chesto ima alternatives)
+
+by default next js prepares the pages. If we need to wait for data, we do this by exporting a special function in the page component file (doesn't work in other component files, only the pages). Mora da se vika get StaticProps, next js will look for that name and execute the function during the pre rendering process, before it calls the component function. It can be async, so next Js will wait for it to be resolved. We can put code that will only run on a server. Access file system, connect to a databse, etc. Any code will not end up  and execute on the client side (executes during the build pricess, not on the server and not on the client)
+
+                    export async function getStaticProps() {
+  //fetch data from an API or read data from files
+  //then return object (MUST), we set props property, the object that the page will recieve as props
+                        return {
+                                props: {
+                                meetups: DUMMY_MEETUPS,
+                                },
+                            };
+                            }
+
+
+
+
+
+UPDATE DATA ON PRE GENERATED PAGES: 
+
+
+problem: this data loaded before rendering can get outdated. If we add more meetups , hte pre generated page won't know about it, if we don't add client side rendering.
+We can rebuild it (if it doesn't happen often, primer vo blogs) but if it changes frequently:
+
+
+solution : extra property in get Staci props:
+
+    //revalidate unlocks a feature called incremental static generation, number of seconds next js will wait until it regenerates this page for an incoming request. it will be regenerated on the server at least in 10 seconds if there are request coming for this page.
+    revalidate: 10,
+
+
+2. SERVER SIDE RENDERING (to use if we need acces to the request object, data that changes multiple times every second etc.)
+
+if we want to regenerate this page for every incoming request: PREGENRATE DYNAMICALLY
+alternative to getStaticProps: 
+
+disadvantage on this: runs every request, and it means you need to wait for the page to be generated on every incoming request. If data doesn't change all the time, and don't need access to request object, then getStaticProps is faster. 
+
+
+regenerate page dynamically for every request. reserved name. This will not run during the build process , but always on the server after deployment. Runs on server, never client, we can run server side code, perform operations that use credentials that should not be exposed to users.
+
+this runs for every incoming request, no need for revalidate.
+
+context parameter - we have the request and response object. if we need for our code.
+
+
+                            export async function getServerSideProps(context) {
+                        const req = context.req;
+                        const res = context.res;
+
+                        //fetch data prom APi or file system.
+                        return {
+                            props: {
+                            meetups: DUMMY_MEETUPS,
+                            },
+                        };
+                        }
+
+
+
+
+PRE RENDERING DYNAMIC PAGES:
+
+meetup data does not change often, we don't have edit, and even if we had, it would not be every second.
+
+but here the problem is: this is a dynamic page, when we fetch data we need to identify which meetup we need. Ex. its Id. Id is in the URl,
+
+USE ROUTER WILL NOT WORK : we usually it with useRouter hook and query property. But use Router can only be sued in the component function, not in staticProps function.
+
+for this we need context. in get static props it doesn't have request repsonse, ama it has params key. context.params - object where the identifiers will be properties and the values are the values encoded in the url.
+
+ERROR: getStaticPaths is required: another function, that we need to export in a page component path if it's a dynamic page and we're using get static props. Not for get server side props and not for using neither of them.
+
+why? With props, a page is pregenerated during the build process. For the dynamic page it needs tp oregenerate all versions of that dynamic page in advance for all the supported ids. It needs to know for which values it needs to pregenerate them during the build process.
+
+it returns object where we describe all the dynamic segment values, returns object with path key - array of object - one object for every dynamic page :params key object with all keys (ako se nested pokje natre), tuka samo po edno.
+
+we will not hardcode, but fetch it from a database and generate it dynamically.
+
+Error: fallback key:
+next to paths key we need to return fallback key: tells next js whether your paths array contains all supported parameter values, or just some of them. False means it contains all supported meetup values (if a user enters something random sho ne e na listata kje pokazhi 404) ako e true, next js will generate something for the request i da ne e dolu vo paths navedeno. True e korisno ako podocna ima novi stvari da generira as new requests are coming in. Tuka ne ni trebe.
+
+                export async function getStaticPaths() {
+                return {
+                    fallback: false,
+                    paths: [
+                    {
+                        params: {
+                        meetupId: "m1",
+                        },
+                    },
+                    {
+                        params: {
+                        meetupId: "m2",
+                        },
+                    },
+                    ],
+                };
+                }
+
+                export async function getStaticProps(context) {
+                //fetch data for a single meetup
+
+                const meetupId = context.params.meetupId;
+                console.log(meetupId, "from getstaticprops in details page");
+                //this will be logged in the terminal, not the browser becausae it's server side code.
+                return {
+                    props: {
+                    meetupData: {
+                        image:
+                        "https://cdn.eventinc.de/provider_pictures/pictures/000/230/385/cropped_webp/eventlocation-jan-mitch-rostock.webp?1574763660",
+                        id: meetupId,
+                        title: "First Meetup",
+                        address: "some streed, some City, 7000",
+                        description: "da se napieme kafica",
+                    },
+                    },
+                };
+                }
+
+
+
+API ROUTES: special routes, pages, that don't return html code, are about accepting incoming http requests, post, put patch requests, with json data ttached to them, and do whatever is needed and return json data.
+
+
+1. add folder to the pages folder names api (reserved word) - will pick up any js files and turn to api routes.
+        here we don't create a react component. We define functions that contain server side code. It will only run on the server, never exposed to the client. We can use credentials. They are triggered when a request is sent to the route. 
+
+
+2. set up a cloud database primer mongo db, we set up we make cluster, add a user that can access data, add our api za da mojme od nash pc da prajme stvari and then 
+                npm install mongodb.
+                import {MongoClient} from 'mongodb';
+                object that lets us connect to it
+    then pass connect method and the connection string from the mongo db.
+                ('mongodb+srv://dijananas:<password>@cluster0.mket2ir.mongodb.net/?retryWrites=true&w=majority');
+                mesto <password> go klavame the password of our user. Zagradite se brishat
+                posle /net/ we add the database name znachi vaka kje doj the link
+            const client = await MongoClient.connect(
+      "mongodb+srv://dijananas:dijananas@cluster0.mket2ir.mongodb.net/meetups?retryWrites=true&w=majority"
+    );
+//never run on client side, to not expose credentials.!!!
+
+
+ on clent call bd method to get ahold of that database, if it doesn't exist it will be created.
+    c               onst db = client.db();
+
+ get ahold of the collections, so colleciton method and pass a name, if it doesn't exist it's created on the fly.
+ collections is like tables on sql, and documents will be entries in that tables. Single meetup will be a single document, so the colleciton has multiple documents.
+                    const meetupsCollection = db.collection("meetups");
+
+ query command to insert one new document in the collection. A document is a JS object.
+ insert one returns a promise, so we await it.
+ result will be object with the automatically generated id primer.
+                const result = await meetupsCollection.insertOne({ data });
+                console.log(result, "result from mongo db inster one");
+
+ close db connection
+                client.close();
+
+ use response obj to send back a response
+ res.status to set a http status code of the response. 201 is that sth is inserted sucessfully. And json method to prepare the json data that will be added to the ongoing response.
+                res.status(201).json({ message: "Meetup inserted!" });
+  
+
+  i posle pushtame fetch request do toj path : 
+                        function NewMeetupPage() {
+                        //send a request to the new meetup api path
+                        async function addMeetupHandler(enteredMeetupData) {
+                            const response = await fetch("/api/new-meetup", {
+                            method: "POST",
+                            body: JSON.stringify(enteredMeetupData),
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            });
+
+                            const data = await response.json();
+
+                            console.log(data, "response from the request in new meetup page");
+  }}
+
+
+  AKO NE FAKJA: check username credentials and password, check the IP address allowed, mene mi se smena ne znam oti. Check if connect to mongo is async function, jas to go zaborajv.
+
+
+
+
+  //GET DATA FROM THE DATABASE - we can do it in ger Server Props since that is client side code. 
+
+
+  export async function getStaticProps() {
+
+  //this is server side code, and usually ne mojme fetch vo server side code da klavame, ama next dozvolva. The code won't be exposed to the client, so we can directly put the code here, no need to send request to our own api route.
+  //with importing mongo db next js put that code not on the client side.
+
+                        MongoClient.connect();
+
+  //connect to the database and collection
+                        const client = await MongoClient.connect(
+                            "mongodb+srv://dijananas:dijananas@cluster0.mket2ir.mongodb.net/meetups?retryWrites=true&w=majority"
+                        );
+                        const db = client.db();
+                        const meetupsCollection = db.collection("meetups");
+
+  //find method will find all the documents in that collection, async task returns a promise. To array to get back an array of documents.
+                        const meetups = await meetupsCollection.find().toArray();
+
+  //we get error because the auto generated ID is an object that can't be returned as simple data like tihs. We need to map the array.
+
+  client.close();
+
+  return {
+    props: {
+      meetups: meetups.map((meetup) => ({
+        title: meetup.title,
+        address: meetup.address,
+        image: meetup.image,
+        id: meetup._id.toString(), //we need to make it to string because it gives error.
+      })), }}
+
+
+
+
+
+      GETTING MEETUP DETAILS:
+
+      treba dva pati da go naprajme, ednash vo static paths ( to make the url ko sho treba) annd static props
+
+
+      1. meetup paths 
+
+                                export async function getStaticPaths() {
+                            const client = await MongoClient.connect(
+                                "mongodb+srv://dijananas:dijananas@cluster0.mket2ir.mongodb.net/meetups?retryWrites=true&w=majority"
+                            );
+                            const db = client.db();
+                            const meetupsCollection = db.collection("meetups");
+
+~~~~~~~~~~~~~FIND : //pass first object as empty, (find all object, we put here criteria), pass second argument to define which fields we need to return - {_id: 1} this means only include the ID but no other field values. WE're only fetching the ids.
+                            const meetups = await meetupsCollection.find({}, { _id: 1 }).toArray();
+
+                            client.close();
+
+this takes us to that path vo url, it puts the id in the url but does not fetch the data. Oti e vaka glupo.
+                            return {
+                                fallback: false,
+                                paths: meetups.map((meetup) => ({
+                                params: { meetupId: meetup._id.toString() },
+                                })),
+                            };
+                            }
+
+    2. get static props
+
+    export async function getStaticProps(context) {
+  const meetupId = context.params.meetupId;
+
+//fetch data for a single meetup
+                        const client = await MongoClient.connect(
+                            "mongodb+srv://dijananas:dijananas@cluster0.mket2ir.mongodb.net/meetups?retryWrites=true&w=majority"
+                        );
+                        const db = client.db();
+                        const meetupsCollection = db.collection("meetups");
+
+~~~~~~~~~~~~~~~~~~~~~~FIND ONE: pass first object as empty, (find all object, we put here criteria), pass second argument to define which fields we need to return - {_id: 1} this means only include the ID but no other field values. WE're only fetching the ids.
+//find one finds one document,we pass object on what to search we can pass the fields names (title, id, description) and the values we need for them.
+//we wrapt the meetupId with ObjectId imported from Mongo db jer ne moj da go naj ko string. this is stupid. To convert it to object. Posle dolu vo props we need to convert it back to a string.
+
+                        const obId = new ObjectId(meetupId);
+
+                        const selectedMeetup = await meetupsCollection.findOne({
+                            _id: obId,
+                        });
+
+                        client.close();
+
+//this will be logged in the terminal, not the browser becausae it's server side code.
+                        return {
+                            props: {
+                            meetupData: {
+                                id: selectedMeetup._id.toString(),
+                                title: selectedMeetup.title,
+                                address: selectedMeetup.address,
+                                image: selectedMeetup.image,
+                                description: selectedMeetup.description,
+                            },
+                            },
+                        };
+                        }
+
+//then we pass this as props pogore za da gi displaynime fo meetupDetails component.
+
+
+
+//METADATA - Adding head elements. - when we deploy, da dodajme metadata. descirption primer, za search engines da pokazhat on search. I page title. 
+
+            import Head from "next/head";
+and add stuff
+
+                                function MeetupDetails(props) {
+                    return (
+                        <Fragment>
+                        <Head>
+                            <title>{props.meetupData.title}</title>
+                            <meta name="description" content={props.meetupData.description} />
+                        </Head>
+                        <MeetupDetail
+                            image={props.meetupData.image}
+                            title={props.meetupData.title}
+                            address={props.meetupData.address}
+                            description={props.meetupData.description}
+                        />
+                        </Fragment>)}
+
+or dynamic vaka
+
+                        function MeetupDetails(props) {
+                        return (
+                            <Fragment>
+                            <Head>
+                                <title>{props.meetupData.title}</title>
+                                <meta name="description" content={props.meetupData.description} />
+                            </Head>
+                            <MeetupDetail
+                                image={props.meetupData.image}
+                                title={props.meetupData.title}
+                                address={props.meetupData.address}
+                                description={props.meetupData.description}
+                            />
+                            </Fragment>)}

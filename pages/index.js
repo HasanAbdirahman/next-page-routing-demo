@@ -69,7 +69,7 @@ export async function getStaticProps() {
     // since getStaticProps is a static page that is build during the production
     // if the data changes it will not know we want to use revalidate every 10
     // seconds to check any changes
-    revalidate: 10,
+    revalidate: 1,
   };
 }
 
