@@ -36,7 +36,44 @@ export default function HomePage(props) {
 // to the server side or build/production side
 
 //  everything happens here in the server and regenerated every 10 seconds
-export async function getStaticProps() {
+// export async function getStaticProps() {
+//   //  fetch data here we can use fetch() and get the data and then create a new instance
+//   //  meetups file inside api folder but that is cumbersome since this function is
+//   // already running on the server we can connect directly to the database here
+//   // and retrieve that information
+
+//   const client = await MongoClient.connect(process.env.MONGO_URL);
+
+//   // create db
+//   const db = client.db();
+//   // creates database collection
+//   const meetupCollection = db.collection("meetups");
+//   //  all collections
+//   const meetups = await meetupCollection.find().toArray();
+//   console.log(meetups);
+
+//   // close the connection
+//   client.close();
+
+//   return {
+//     props: {
+//       meetups: meetups.map((meetup) => {
+//         return {
+//           title: meetup.title,
+//           image: meetup.image,
+//           address: meetup.address,
+//           id: meetup._id.toString(),
+//         };
+//       }),
+//     },
+//     // since getStaticProps is a static page that is build during the production
+//     // if the data changes it will not know we want to use revalidate every 10
+//     // seconds to check any changes
+//     revalidate: 1,
+//   };
+// }
+
+export async function getServerSideProps() {
   //  fetch data here we can use fetch() and get the data and then create a new instance
   //  meetups file inside api folder but that is cumbersome since this function is
   // already running on the server we can connect directly to the database here
@@ -66,10 +103,6 @@ export async function getStaticProps() {
         };
       }),
     },
-    // since getStaticProps is a static page that is build during the production
-    // if the data changes it will not know we want to use revalidate every 10
-    // seconds to check any changes
-    revalidate: 1,
   };
 }
 

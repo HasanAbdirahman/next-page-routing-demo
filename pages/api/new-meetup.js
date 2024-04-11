@@ -20,8 +20,6 @@ async function handler(req, res) {
       const meetupCollection = db.collection("meetups");
       // inserting one item
       const result = await meetupCollection.insertOne(data);
-      console.log(result);
-
       // close the connection
       client.close();
 
