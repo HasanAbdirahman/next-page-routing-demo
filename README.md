@@ -8,7 +8,7 @@ This is a Next.js web application for managing meetings. It allows users to crea
 - View details of individual meetings
 
 ## Deployed Site
-The application is deployed and accessible at: [Next.js Meeting Planner](https://your-deployed-site-url.com)
+The application is deployed and accessible at: [Next.js Meeting Planner](https://next-page-routing-demo.vercel.app/)
 
 
 ## Dependencies
